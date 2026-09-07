@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Flight Path">
+<title>Flight Path — Speed & Plyo</title>
+<style>
+  :root{
+    --pitch:#14201B;
+    --pitch-2:#1D2E27;
+    --chalk:#F6F4EC;
+    --chalk-dim:#E7E3D4;
+    --amber:#E8A33D;
+    --amber-dim:#C98A2C;
+    --turf:#4F8A67;
+    --turf-dim:#3B6A4E;
+    --ink:#1B231F;
+    --ink-soft:#5B655F;
+    --line:#D8D2BE;
+    --danger:#C15B3E;
+    --radius-lg:22px;
+    --radius-md:14px;
+    --radius-sm:9px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; height:100%; background:var(--pitch);}
+  body{
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    color:var(--ink);
+    overscroll-behavior-y: none;
+  }
+  #app{
+    max-width:520px;
+    margin:0 auto;
+    min-height:100vh;
+    min-height:100dvh;
+    background:var(--chalk);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+
+  /* HEADER */
+  header.top{
+    padding: calc(var(--safe-top) + 14px) 18px 12px;
+    background: linear-gradient(180deg, var(--pitch) 0%, var(--pitch-2) 100%);
+    color: var(--chalk);
+    position: sticky;
+    top:0;
+    z-index: 30;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .brand h1{
+    font-size:19px;
+    font-weight:800;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  .brand .disc{
+    width:9px; height:9px; border-radius:50%;
+    background: var(--amber);
+    display:inline-block;
+    margin-right:8px;
+    box-shadow: 0 0 0 3px rgba(232,163,61,0.18);
+  }
+  .brand .today{
+    font-size:12px;
+    color: rgba(246,244,236,0.55);
+    font-weight:600;
+  }
+
+  /* Phase selector — horizontal scroll pills */
+  .phase-scroll{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding-bottom:2px;
+    scrollbar-width:none;
+  }
+  .phase-scroll::-webkit-scrollbar{display:none;}
+  .phase-pill{
+    flex:0 0 auto;
+    padding:8px 14px;
+    border-radius:999px;
+    background: rgba(246,244,236,0.08);
+    border:1px solid rgba(246,244,236,0.14);
+    color: rgba(246,244,236,0.75);
+    font-size:13px;
+    font-weight:600;
+    white-space:nowrap;
+    cursor:pointer;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .phase-pill .sub{
+    display:block;
+    font-size:10.5px;
+    font-weight:500;
+    color: rgba(246,244,236,0.45);
+    margin-top:1px;
+  }
+  .phase-pill.active{
+    background: var(--amber);
+    border-color: var(--amber);
+    color: #241705;
+  }
+  .phase-pill.active .sub{ color: rgba(36,23,5,0.65); }
+
+  /* MAIN */
+  main{
+    flex:1;
+    padding: 16px 18px calc(96px + var(--safe-bottom));
+  }
+
+  .phase-banner{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin: 4px 0 16px;
+  }
+  .phase-banner .label{
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color: var(--turf-dim);
+  }
+  .phase-banner .note{
+    font-size:12px;
+    color: var(--ink-soft);
+    font-weight:500;
+  }
+
+  .day-note{
+    background: var(--chalk-dim);
+    border-radius: var(--radius-md);
+    padding:12px 14px;
+    font-size:13px;
+    line-height:1.45;
+    color: var(--ink-soft);
+    margin-bottom:18px;
+  }
+  .day-note b{ color: var(--ink); }
+
+  section.block{ margin-bottom: 22px; }
+  .block-head{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .block-head .dot{
+    width:7px;height:7px;border-radius:50%;
+  }
+  .block-head h2{
+    font-size:14px;
+    font-weight:800;
+    letter-spacing:-0.01em;
+    margin:0;
+    color: var(--ink);
+  }
+  .block-head .count{
+    margin-left:auto;
+    font-size:11px;
+    font-weight:600;
+    color: var(--ink-soft);
+    background: var(--chalk-dim);
+    padding:2px 8px;
+    border-radius:999px;
+  }
+
+  /* warmup list — simple, non-expandable */
+  ul.warmup{
+    list-style:none;
+    margin:0; padding:0;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow:hidden;
+  }
+  ul.warmup li{
+    padding:11px 14px;
+    font-size:13.5px;
+    line-height:1.4;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    gap:10px;
+  }
+  ul.warmup li:last-child{ border-bottom:none; }
+  ul.warmup li .n{
+    color: var(--turf-dim);
+    font-weight:700;
+    font-variant-numeric: tabular-nums;
+    flex:0 0 auto;
+    width:16px;
+  }
+
+  /* exercise cards */
+  .ex-card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius: var(--radius-md);
+    margin-bottom:10px;
+    overflow:hidden;
+  }
+  .ex-head{
+    padding:13px 14px;
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    cursor:pointer;
+  }
+  .ex-head .txt{ flex:1; min-width:0; }
+  .ex-name{
+    font-size:14.5px;
+    font-weight:700;
+    color: var(--ink);
+    letter-spacing:-0.005em;
+  }
+  .ex-scheme{
+    display:inline-block;
+    margin-top:4px;
+    font-size:11.5px;
+    font-weight:700;
+    color: var(--amber-dim);
+    background: rgba(232,163,61,0.12);
+    padding:2px 8px;
+    border-radius:999px;
+    font-variant-numeric: tabular-nums;
+  }
+  .ex-chevron{
+    flex:0 0 auto;
+    width:22px; height:22px;
+    border-radius:50%;
+    background: var(--chalk-dim);
+    display:flex; align-items:center; justify-content:center;
+    transition: transform .2s ease;
+    margin-top:2px;
+  }
+  .ex-card.open .ex-chevron{ transform: rotate(180deg); }
+  .ex-chevron svg{ width:11px; height:11px; }
+
+  .ex-body{
+    max-height:0;
+    overflow:hidden;
+    transition: max-height .25s ease;
+  }
+  .ex-card.open .ex-body{ max-height: 400px; }
+  .ex-body-inner{
+    padding: 0 14px 15px;
+    border-top:1px solid var(--line);
+    padding-top:11px;
+  }
+  .ex-desc{
+    font-size:13px;
+    line-height:1.55;
+    color: var(--ink-soft);
+    margin:0 0 12px;
+  }
+  .watch-link{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:12.5px;
+    font-weight:700;
+    color: var(--pitch);
+    background: var(--chalk-dim);
+    border:1px solid var(--line);
+    padding:7px 12px;
+    border-radius:999px;
+    text-decoration:none;
+  }
+  .watch-link svg{ width:12px; height:12px; }
+
+  .cooldown-card{
+    background: var(--chalk-dim);
+    border-radius: var(--radius-md);
+    padding:12px 14px;
+    font-size:13px;
+    line-height:1.5;
+    color: var(--ink-soft);
+  }
+
+  /* BOTTOM TAB BAR — Day A / Day B */
+  nav.tabbar{
+    position: fixed;
+    left:50%;
+    transform: translateX(-50%);
+    bottom:0;
+    width:100%;
+    max-width:520px;
+    background: rgba(246,244,236,0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top:1px solid var(--line);
+    padding: 8px 22px calc(10px + var(--safe-bottom));
+    display:flex;
+    gap:10px;
+    z-index:40;
+  }
+  .tab-btn{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:3px;
+    padding:7px 4px 5px;
+    border-radius: var(--radius-sm);
+    background:transparent;
+    border:none;
+    color: var(--ink-soft);
+    font-family:inherit;
+  }
+  .tab-btn svg{ width:20px; height:20px; }
+  .tab-btn .t-label{ font-size:11px; font-weight:700; }
+  .tab-btn .t-sub{ font-size:9.5px; font-weight:500; color: var(--ink-soft); opacity:.75; }
+  .tab-btn.active{ color: var(--pitch); }
+  .tab-btn.active svg{ color: var(--amber-dim); }
+  .tab-btn.active .t-sub{ color: var(--amber-dim); opacity:1;}
+
+  @media (max-width: 360px){
+    .brand h1{ font-size:17px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="top">
+    <div class="brand">
+      <h1><span class="disc"></span>Flight Path</h1>
+      <span class="today" id="phaseWeeks"></span>
+    </div>
+    <div class="phase-scroll" id="phaseScroll"></div>
+  </header>
+
+  <main id="main"></main>
+
+  <nav class="tabbar">
+    <button class="tab-btn" id="tabA">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      <span class="t-label">Day A</span>
+      <span class="t-sub">Linear speed + plyo</span>
+    </button>
+    <button class="tab-btn" id="tabB">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3l4 4-4 4"/><path d="M17 21l-4-4 4-4"/><path d="M3 7h8"/><path d="M13 17h8"/></svg>
+      <span class="t-label">Day B</span>
+      <span class="t-sub">Agility + reactive</span>
+    </button>
+  </nav>
+
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+
+function yt(q){ return "https://www.youtube.com/results?search_query=" + encodeURIComponent(q + " exercise technique"); }
+
+const WARMUP_A = [
+  "Jog easy — 3–5 min",
+  "Leg swings (front/back, side/side) — 10 each",
+  "Walking lunge w/ twist — 8 each leg",
+  "High knees, butt kicks, A-skips — 15m each",
+  "2× building strides (60–75% effort) — 20m"
+];
+const WARMUP_B = WARMUP_A.concat([
+  "Lateral shuffle — 15m each direction",
+  "Carioca — 15m each direction"
+]);
+const COOLDOWN = "Walk 2–3 min, then calf and hip-flexor stretch — 30–45 sec per side. Keep breathing slow; this is about bringing your heart rate down, not more work.";
+
+// helper to build an exercise object
+function ex(name, scheme, desc){
+  return { name, scheme, desc, video: yt(name) };
+}
+
+const PHASES = {
+  p1: {
+    label: "Phase 1", sub: "Foundation", weeks: "Weeks 1–8 · Sept–late Oct 2026",
+    goal: "Clean technique, low-to-moderate intensity, build tissue tolerance. Land soft, control everything. If a set falls apart, stop it early — quality over count.",
+    A: {
+      plyo: [
+        ex("Pogo hops", "2 × 15", "Stand tall, ankles only (minimal knee bend), quick low-amplitude hops staying on the balls of your feet, arms relaxed at your sides."),
+        ex("Squat jumps (stick landing)", "2 × 5", "Feet hip-width, drop to a quarter/half squat, jump straight up reaching full extension, land softly back into the same squat position and hold 2 seconds before resetting.")
+      ],
+      speedAgility: [
+        ex("Acceleration starts", "4 × 10m, walk-back recovery", "3-point or 2-point stance. First 3 steps low and driving (shin angle ~45°), arms pumping hard, gradually rise to upright by step 6–8. Walk back to the start between reps.")
+      ]
+    },
+    B: {
+      plyo: [
+        ex("Lateral pogo hops", "2 × 10 / side", "Small, quick side-to-side ankle hops over an imaginary line about shoulder-width apart, staying on the balls of your feet, minimal knee bend."),
+        ex("Broad jump (stick landing)", "2 × 5", "Feet hip-width, load with a hip hinge and arm swing back, jump forward for distance, land on both feet in a quarter-squat and freeze for 2 seconds. Reset fully between reps.")
+      ],
+      speedAgility: [
+        ex("5-yard shuttle", "4 × reps, full recovery", "Set 2 cones 5 yards apart. Sprint cone to cone, touching the ground (or line) with your hand at each end before reversing. Focus on decelerating under control over the last 2 steps, low hips, and a clean push-off out of the turn rather than top speed.")
+      ]
+    }
+  },
+  p2: {
+    label: "Phase 2", sub: "Build", weeks: "Weeks 9–17 · Nov–early Jan 2027",
+    goal: "More force output, a touch more complexity (rebound elements), and slightly more speed volume. Landings now include an immediate rebound instead of always sticking cold.",
+    A: {
+      plyo: [
+        ex("Squat jump → broad jump combo", "3 × 4", "Perform one squat jump, land, and immediately chain into a broad jump for distance without pausing between the two. Reset fully between combo reps."),
+        ex("Single-leg pogo", "2 × 10 / side", "Same ankle-hop pattern as the double-leg pogo but on one leg — small, quick hops, opposite knee driven slightly forward and held steady for balance.")
+      ],
+      speedAgility: [
+        ex("Acceleration, resisted", "5 × 15m, 2 of 5 resisted", "Same low-drive start for the first 3 steps as Phase 1, now running through to 15m. On resisted reps, use a light band held by a partner or a light sled — enough tension to slow you slightly without breaking your forward lean.")
+      ]
+    },
+    B: {
+      plyo: [
+        ex("Lateral bound (stick)", "3 × 5 / side", "Push off one leg out to the side for distance, land on the opposite leg in a controlled quarter-squat, hold 2 seconds before pushing back. Each rep counts as one direction."),
+        ex("Broad jump → sprint 5m", "3 × 3", "Perform a broad jump for distance, stick the landing briefly, then immediately explode into a 5m sprint.")
+      ],
+      speedAgility: [
+        ex("5-10-5 shuttle", "4 × reps, full recovery (90s+)", "Set 3 cones in a line, 5 yards apart. Start at the middle cone, sprint 5 yards to one side and touch the line, reverse 10 yards to touch the far line, then sprint back 5 yards through the middle. Stay low, chop your steps into each turn.")
+      ]
+    }
+  },
+  p3: {
+    label: "Phase 3", sub: "Intensify", weeks: "Weeks 18–27 · Jan–mid Mar 2027",
+    goal: "Higher-intensity plyo (true reactive/depth work), max-velocity speed, and reactive agility with an external cue. Ground contact time should be getting shorter, not just jumps getting higher — quality over max height.",
+    A: {
+      plyo: [
+        ex("Depth jump → vertical jump", "3 × 4", "Step off (don't jump off) a 12–18\" box, land on both feet, and minimize ground contact time before immediately exploding straight up into a max-height vertical jump."),
+        ex("Bounding", "3 × 20m", "Exaggerated running strides covering maximum distance per step, driving the opposite knee up high and punching the opposite arm forward. Focus on hang-time and distance per stride over speed.")
+      ],
+      speedAgility: [
+        ex("Flying 20s", "4 × reps, full recovery (2 min+)", "Jog/build for 10m to reach speed gradually, hit the 10m mark near top speed, then sprint all-out for the following 20m. Walk back and take full recovery before the next rep.")
+      ]
+    },
+    B: {
+      plyo: [
+        ex("Lateral bound → stick → sprint", "3 × 4 / side", "Perform a lateral bound as in Phase 2 (pushing off to the side), stick the landing for 1 second, then immediately drive forward into a 5m sprint — not continuing sideways. The bound sets your base; the sprint out of it goes straight ahead."),
+        ex("Depth jump → lateral bound", "2 × 4", "Step off a 12–18\" box, land on both feet with minimal contact time, then immediately push off into a lateral bound to one side. Alternate sides each rep.")
+      ],
+      speedAgility: [
+        ex("Reactive shuttle", "5 × reps, full recovery", "Start in an athletic ready position facing a partner (or set up to drop a ball/cone). On their call of \u201cleft\u201d/\u201cright\u201d or the ball drop, react and sprint 5 yards in that direction, decelerate under control, and hold. This trains reaction time on top of the movement pattern, not just speed.")
+      ]
+    }
+  },
+  p4: {
+    label: "Phase 4", sub: "Peak & Taper", weeks: "Weeks 28–35 · Mid Mar–Apr 2027",
+    goal: "Stay explosive, but cut volume ~30–40% from Phase 3 so your legs stay fresh for practice. Intensity stays at or near max — this is about staying sharp, not building more capacity.",
+    A: {
+      plyo: [
+        ex("Depth jump", "2 × 3, near-max intensity", "Same execution as Phase 3 (step off a 12–18\" box, minimal ground contact, explode into a max-height vertical jump), but only 3 reps per set at maximum effort with full recovery between reps.")
+      ],
+      speedAgility: [
+        ex("Flying 20s, near-max", "2–3 × reps, full recovery, 95%+ effort", "Same setup as Phase 3 flying 20s, but treat each rep as a near-max effort. If you can't hit close to your best time, cut the session short rather than grinding out fatigued reps.")
+      ]
+    },
+    B: {
+      plyo: [
+        ex("Reactive lateral bound", "2 × 3 / side", "Same lateral bound pattern as earlier phases, but on a partner's verbal or visual cue rather than a self-paced start — keeps a reactive element in even during the low-volume taper phase.")
+      ],
+      speedAgility: [
+        ex("Reactive shuttle, near-max", "3 × reps, full recovery", "Same partner-call / ball-drop reactive shuttle as Phase 3, low rep count — prioritize crisp reaction and top-end quality over quantity.")
+      ]
+    }
+  },
+  taper: {
+    label: "Taper", sub: "Final week", weeks: "Week 36 · Last week before season",
+    goal: "Leave every session feeling faster than you came in, not tired. Very low volume, high quality.",
+    A: {
+      plyo: [
+        ex("Pogo hops, light", "2 × 3", "As in Phase 1, light and springy — this is a touch on the gas, not a workout.")
+      ],
+      speedAgility: [
+        ex("Easy strides", "2 × ~20m", "About 70% effort, focus on smooth rhythm, not max speed. That's the whole session.")
+      ]
+    },
+    B: {
+      plyo: [
+        ex("Lateral bounds, controlled", "2 × 3", "As in Phase 2, controlled, not max distance.")
+      ],
+      speedAgility: [
+        ex("Light shuttle reps", "2 × reps, ~75% effort", "The 5-yard shuttle from Phase 1, kept easy.")
+      ]
+    }
+  }
+};
+
+const PHASE_ORDER = ["p1","p2","p3","p4","taper"];
+
+/* ---------------- STATE ---------------- */
+let state = { phase: "p1", day: "A" };
+
+/* ---------------- RENDER ---------------- */
+const phaseScroll = document.getElementById("phaseScroll");
+const phaseWeeksEl = document.getElementById("phaseWeeks");
+const mainEl = document.getElementById("main");
+const tabA = document.getElementById("tabA");
+const tabB = document.getElementById("tabB");
+
+function renderPhaseScroll(){
+  phaseScroll.innerHTML = "";
+  PHASE_ORDER.forEach(pid=>{
+    const p = PHASES[pid];
+    const btn = document.createElement("button");
+    btn.className = "phase-pill" + (state.phase===pid ? " active" : "");
+    btn.innerHTML = p.label + '<span class="sub">' + p.sub + "</span>";
+    btn.addEventListener("click", ()=>{ state.phase = pid; render(); });
+    phaseScroll.appendChild(btn);
+  });
+}
+
+function iconWatch(){
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>';
+}
+function iconChevron(){
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="#5B655F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+}
+
+function buildExCard(exObj, idx, groupKey){
+  const card = document.createElement("div");
+  card.className = "ex-card";
+  const id = groupKey + "-" + idx;
+  card.innerHTML = `
+    <div class="ex-head" data-id="${id}">
+      <div class="txt">
+        <div class="ex-name">${exObj.name}</div>
+        <span class="ex-scheme">${exObj.scheme}</span>
+      </div>
+      <div class="ex-chevron">${iconChevron()}</div>
+    </div>
+    <div class="ex-body">
+      <div class="ex-body-inner">
+        <p class="ex-desc">${exObj.desc}</p>
+        <a class="watch-link" href="${exObj.video}" target="_blank" rel="noopener">${iconWatch()} Watch demo</a>
+      </div>
+    </div>
+  `;
+  const head = card.querySelector(".ex-head");
+  head.addEventListener("click", ()=>{ card.classList.toggle("open"); });
+  return card;
+}
+
+function render(){
+  renderPhaseScroll();
+  const p = PHASES[state.phase];
+  phaseWeeksEl.textContent = p.weeks.split("·")[0].trim();
+
+  tabA.classList.toggle("active", state.day==="A");
+  tabB.classList.toggle("active", state.day==="B");
+
+  const dayData = p[state.day];
+  const dayLabel = state.day === "A" ? "Linear Speed + Vertical/Linear Plyo" : "Agility + Lateral/Reactive Plyo";
+  const warmup = state.day === "A" ? WARMUP_A : WARMUP_B;
+
+  mainEl.innerHTML = "";
+
+  const banner = document.createElement("div");
+  banner.className = "phase-banner";
+  banner.innerHTML = `<span class="label">Day ${state.day} · ${dayLabel}</span>`;
+  mainEl.appendChild(banner);
+
+  const note = document.createElement("div");
+  note.className = "day-note";
+  note.innerHTML = `<b>${p.label} — ${p.sub}.</b> ${p.goal}`;
+  mainEl.appendChild(note);
+
+  // Warm-up block
+  const warmSection = document.createElement("section");
+  warmSection.className = "block";
+  warmSection.innerHTML = `
+    <div class="block-head">
+      <span class="dot" style="background:var(--turf)"></span>
+      <h2>Warm-up</h2>
+      <span class="count">6–8 min</span>
+    </div>
+    <ul class="warmup">
+      ${warmup.map((w,i)=>`<li><span class="n">${i+1}</span><span>${w}</span></li>`).join("")}
+    </ul>
+  `;
+  mainEl.appendChild(warmSection);
+
+  // Plyo block
+  const plyoSection = document.createElement("section");
+  plyoSection.className = "block";
+  const plyoHead = document.createElement("div");
+  plyoHead.className = "block-head";
+  plyoHead.innerHTML = `<span class="dot" style="background:var(--amber)"></span><h2>Plyometrics</h2><span class="count">${dayData.plyo.length} drill${dayData.plyo.length>1?'s':''}</span>`;
+  plyoSection.appendChild(plyoHead);
+  dayData.plyo.forEach((e,i)=> plyoSection.appendChild(buildExCard(e, i, state.phase+"-"+state.day+"-plyo")));
+  mainEl.appendChild(plyoSection);
+
+  // Speed/Agility block
+  const saSection = document.createElement("section");
+  saSection.className = "block";
+  const saLabel = state.day === "A" ? "Speed" : "Agility";
+  const saHead = document.createElement("div");
+  saHead.className = "block-head";
+  saHead.innerHTML = `<span class="dot" style="background:var(--pitch)"></span><h2>${saLabel}</h2><span class="count">${dayData.speedAgility.length} drill${dayData.speedAgility.length>1?'s':''}</span>`;
+  saSection.appendChild(saHead);
+  dayData.speedAgility.forEach((e,i)=> saSection.appendChild(buildExCard(e, i, state.phase+"-"+state.day+"-sa")));
+  mainEl.appendChild(saSection);
+
+  // Cooldown
+  const cdSection = document.createElement("section");
+  cdSection.className = "block";
+  cdSection.innerHTML = `
+    <div class="block-head">
+      <span class="dot" style="background:var(--ink-soft)"></span>
+      <h2>Cool-down</h2>
+      <span class="count">3 min</span>
+    </div>
+    <div class="cooldown-card">${COOLDOWN}</div>
+  `;
+  mainEl.appendChild(cdSection);
+}
+
+tabA.addEventListener("click", ()=>{ state.day = "A"; render(); });
+tabB.addEventListener("click", ()=>{ state.day = "B"; render(); });
+
+render();
+</script>
+</body>
+</html>
